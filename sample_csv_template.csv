@@ -1,0 +1,7 @@
+[Category],[Exam],[Question Text],[Choice 1],[Choice 2],[Choice 3],[Choice 4],[Correct Answer],[Explanation],[Difficulty],[Topic],[Points],[Question Type]
+[Mathematics],[Basic Math],[What is 2 + 2?],[3],[4],[5],[6],[4],[Simple addition: 2 + 2 = 4],[easy],[Arithmetic],[1],[single]
+[Science],[Chemistry Quiz],[What is the chemical formula for water?],[H2O],[CO2],[O2],[NaCl],[H2O],[Water is H2O - two hydrogen atoms and one oxygen atom],[easy],[Chemistry],[1],[single]
+[History],[World History],[Who was the first President of India?],[Mahatma Gandhi],[Jawaharlal Nehru],[Dr. Rajendra Prasad],[Sardar Patel],[Dr. Rajendra Prasad],[Dr. Rajendra Prasad was India's first President],[medium],[Indian History],[1],[single]
+[Geography],[World Geography],[Which is the largest ocean?],[Atlantic],[Pacific],[Indian],[Arctic],[Pacific],[The Pacific Ocean is the largest ocean on Earth],[easy],[Geography],[1],[single]
+[Science],[Physics],[What is the speed of light?],[300,000 km/s],[150,000 km/s],[500,000 km/s],[1,000,000 km/s],[300,000 km/s],[The speed of light in vacuum is approximately 300,000 km/s],[medium],[Physics],[1],[single]
+

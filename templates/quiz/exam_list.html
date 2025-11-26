@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Exams - ExamPrepQuiz{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-journal-text"></i> Available Exams</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <form method="get" class="mb-3">
+            <div class="input-group">
+                <input type="text" class="form-control" name="search" placeholder="Search exams..." value="{{ search_query }}">
+                <button class="btn btn-outline-secondary" type="submit">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-8">
+        <div class="btn-group" role="group">
+            <a href="{% url 'exam_list' %}" class="btn btn-outline-primary {% if not selected_category %}active{% endif %}">
+                All Categories
+            </a>
+            {% for category in categories %}
+            <a href="{% url 'exam_list' %}?category={{ category.id }}" 
+               class="btn btn-outline-primary {% if selected_category == category.id %}active{% endif %}">
+                {{ category.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if exams %}
+<div class="row">
+    {% for exam in exams %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="d-flex align-items-center">
+                        <h5 class="card-title mb-0 me-2">{{ exam.name }}</h5>
+                        {% if user.is_authenticated %}
+                            {% if exam.completion_status == 'passed' %}
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 1.5rem;" title="Completed - Passed"></i>
+                            {% elif exam.completion_status == 'failed' %}
+                                <i class="bi bi-x-circle-fill text-danger" style="font-size: 1.5rem;" title="Completed - Failed"></i>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <span class="badge bg-secondary">{{ exam.category.name }}</span>
+                </div>
+                <p class="card-text text-muted">{{ exam.description|truncatewords:30 }}</p>
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <i class="bi bi-question-circle"></i> {{ exam.question_count }} Questions |
+                        <i class="bi bi-clock"></i> {{ exam.duration_minutes }} Minutes |
+                        <i class="bi bi-trophy"></i> Passing: {{ exam.passing_score }}%
+                    </small>
+                </div>
+                {% if user.is_authenticated %}
+                <a href="{% url 'quiz_start' exam.id %}" class="btn btn-primary">
+                    <i class="bi bi-play-circle"></i> Start Quiz
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline-primary">Login to Start</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No exams found. {% if search_query %}Try a different search term.{% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
