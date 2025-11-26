@@ -182,12 +182,8 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20
 }
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://examquiz-jifp.onrender.com"
-]
+# CORS settings - Allow all origins
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Email settings (for password reset - configure in production)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
