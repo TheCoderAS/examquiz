@@ -24,6 +24,7 @@ urlpatterns = [
     # Dashboard and Profile
     path('dashboard/', views.dashboard, name='dashboard'),
     path('profile/', views.profile, name='profile'),
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
     
     # Exams
     path('exams/', views.exam_list, name='exam_list'),

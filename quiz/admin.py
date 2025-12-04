@@ -30,9 +30,9 @@ class TopicInline(admin.TabularInline):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description', 'exam_count', 'created_at']
-    search_fields = ['name', 'description']
-    list_filter = ['created_at']
+    list_display = ['name', 'exam_category', 'description', 'exam_count', 'created_at']
+    search_fields = ['name', 'exam_category', 'description']
+    list_filter = ['exam_category', 'created_at']
 
     def exam_count(self, obj):
         return obj.exams.count()
@@ -41,9 +41,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'total_questions', 'duration_minutes', 'passing_score', 'is_active', 'question_count']
-    list_filter = ['category', 'is_active', 'created_at']
-    search_fields = ['name', 'description']
+    list_display = ['name', 'exam_name', 'category', 'total_questions', 'duration_minutes', 'passing_score', 'is_active', 'question_count']
+    list_filter = ['category', 'exam_name', 'is_active', 'created_at']
+    search_fields = ['name', 'exam_name', 'description']
     inlines = [TopicInline]
 
     def question_count(self, obj):
@@ -236,7 +236,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
     fieldsets = (
         ('User Information', {
-            'fields': ('user', 'subscription_plan', 'tokens', 'last_token_grant_date')
+            'fields': ('user', 'profile_photo', 'subscription_plan', 'tokens', 'last_token_grant_date')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

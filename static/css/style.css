@@ -69,7 +69,7 @@ main {
     /* Add dark mode styles here if needed */
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments for mobile and tablet */
 @media (max-width: 768px) {
     .display-4 {
         font-size: 2rem;
@@ -78,5 +78,94 @@ main {
     .hero-section {
         padding: 2rem 1rem !important;
     }
+    
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+    
+    /* Ensure cards stack properly on mobile */
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Better spacing for mobile */
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    /* Profile photo adjustments */
+    .rounded-circle {
+        max-width: 100%;
+    }
+    
+    /* Button adjustments */
+    .btn-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+    
+    /* Table responsive */
+    .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 576px) {
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    h3 {
+        font-size: 1.25rem;
+    }
+    
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    /* Smaller profile photos on mobile */
+    .rounded-circle[style*="width: 120px"] {
+        width: 80px !important;
+        height: 80px !important;
+    }
+    
+    /* Stack columns on very small screens */
+    .row > [class*="col-"] {
+        margin-bottom: 1rem;
+    }
+    
+    /* Better dropdown menu on mobile */
+    .dropdown-menu {
+        max-width: 100%;
+        font-size: 0.9rem;
+    }
+    
+    /* Navbar adjustments */
+    .navbar-nav .nav-link {
+        padding: 0.5rem 1rem;
+    }
+    
+    /* Profile dropdown adjustments */
+    .navbar-nav .dropdown-toggle span {
+        display: none; /* Hide text on very small screens, show only icon */
+    }
+}
+
+/* Ensure images are responsive */
+img {
+    max-width: 100%;
+    height: auto;
 }
 

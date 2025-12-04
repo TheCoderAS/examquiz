@@ -6,6 +6,7 @@ from django.utils import timezone
 class Category(models.Model):
     """Exam categories (e.g., Math, English, Biology)"""
     name = models.CharField(max_length=100, unique=True)
+    exam_category = models.CharField(max_length=100, default='AAAA', help_text="Exam category like AAAA")
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -19,8 +20,14 @@ class Category(models.Model):
 
 
 class Exam(models.Model):
-    """Exams under each category (e.g., SAT, IELTS, Driving Test)"""
+    """Exams under each category (e.g., SAT, IELTS, Driving Test)
+    
+    Note: Category deletion cascades - when a Category is deleted, all related
+    Exams, Topics, Questions, Choices, QuizSessions, UserAnswers, and BookmarkedQuestions
+    will be automatically deleted.
+    """
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='exams')
+    exam_name = models.CharField(max_length=100, default='UPSC', help_text="Exam name like UPSC, ASI, CTET, STET")
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     duration_minutes = models.PositiveIntegerField(default=60, help_text="Duration in minutes")
@@ -31,11 +38,11 @@ class Exam(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['category', 'name']
+        ordering = ['category', 'exam_name', 'name']
         unique_together = ['category', 'name']
 
     def __str__(self):
-        return f"{self.category.name} - {self.name}"
+        return f"{self.category.name} - {self.exam_name} - {self.name}"
 
 
 class Topic(models.Model):
@@ -248,6 +255,12 @@ class UserProfile(models.Model):
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    profile_photo = models.ImageField(
+        upload_to='profile_photos/',
+        null=True,
+        blank=True,
+        help_text="User profile photo"
+    )
     subscription_plan = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_CHOICES,

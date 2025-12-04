@@ -1,2 +1,4 @@
 /.venv
 .env
+/exampquiz/venv
+/exampquiz/__pycache__

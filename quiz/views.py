@@ -15,11 +15,31 @@ import json
 
 def home(request):
     """Home page"""
-    categories = Category.objects.annotate(exam_count=Count('exams')).filter(exam_count__gt=0)
+    # Get all unique exam_names across all categories with exam counts
+    exam_names_data = Exam.objects.filter(
+        is_active=True
+    ).annotate(
+        question_count=Count('questions', filter=Q(questions__is_active=True))
+    ).filter(question_count__gt=0).values('exam_name').annotate(
+        exam_count=Count('id', distinct=True)
+    ).order_by('exam_name')
+    
+    exam_names_list = [{'name': item['exam_name'] or 'Other', 'count': item['exam_count']} for item in exam_names_data]
+    
     recent_exams = Exam.objects.filter(is_active=True).order_by('-created_at')[:6]
+    
+    # Performance over time data for authenticated users
+    recent_sessions = None
+    if request.user.is_authenticated:
+        recent_sessions = QuizSession.objects.filter(
+            user=request.user, 
+            is_completed=True
+        ).order_by('-completed_at')[:10]
+    
     return render(request, 'quiz/home.html', {
-        'categories': categories,
-        'recent_exams': recent_exams
+        'exam_names_list': exam_names_list,
+        'recent_exams': recent_exams,
+        'recent_sessions': recent_sessions
     })
 
 
@@ -83,14 +103,8 @@ def dashboard(request):
         
         # Find the first unanswered question or start from question 1
         answered_question_ids = set(session.user_answers.values_list('question_id', flat=True))
-        # Get question order based on session (same deterministic shuffle)
-        import hashlib
-        import random
-        questions_queryset = list(session.exam.questions.filter(is_active=True).order_by('id'))
-        session_hash = int(hashlib.md5(f"{session.id}{session.started_at}".encode()).hexdigest()[:8], 16)
-        random.seed(session_hash)
-        questions_list = questions_queryset.copy()
-        random.shuffle(questions_list)
+        # Get questions in database order (order field, then id)
+        questions_list = list(session.exam.questions.filter(is_active=True).order_by('order', 'id'))
         
         # Find first unanswered question
         next_question_num = 1
@@ -140,63 +154,119 @@ def dashboard(request):
     })
 
 
-@login_required
 def exam_list(request):
-    """List all available exams"""
+    """List exam_names first, then categories, then exams when selected"""
+    exam_name = request.GET.get('exam_name')
     category_id = request.GET.get('category')
     search_query = request.GET.get('search', '')
     
-    exams = Exam.objects.filter(is_active=True).annotate(
-        question_count=Count('questions')
-    ).filter(question_count__gt=0)
+    # Get all unique exam_names across all categories with exam counts
+    exam_names_data = Exam.objects.filter(
+        is_active=True
+    ).annotate(
+        question_count=Count('questions', filter=Q(questions__is_active=True))
+    ).filter(question_count__gt=0).values('exam_name').annotate(
+        exam_count=Count('id', distinct=True)
+    ).order_by('exam_name')
     
-    if category_id:
-        exams = exams.filter(category_id=category_id)
+    exam_names_list = [{'name': item['exam_name'] or 'Other', 'count': item['exam_count']} for item in exam_names_data]
     
-    if search_query:
-        exams = exams.filter(
-            Q(name__icontains=search_query) | 
-            Q(description__icontains=search_query) |
-            Q(category__name__icontains=search_query)
-        )
+    # Get categories and exams based on what's selected
+    categories_list = []
+    exams_by_exam_name = {}
+    selected_category = None
+    selected_exam_name = None
     
-    categories = Category.objects.annotate(exam_count=Count('exams')).filter(exam_count__gt=0)
-    
-    # Get user's completion status for each exam
-    exam_status = {}
-    if request.user.is_authenticated:
-        # Get all completed sessions for the exams, ordered by most recent first
-        completed_sessions = QuizSession.objects.filter(
-            user=request.user,
-            is_completed=True,
-            exam__in=exams
-        ).select_related('exam').order_by('-completed_at')
+    if exam_name:
+        selected_exam_name = exam_name
         
-        # Create a dict mapping exam_id to status: 'passed', 'failed', or 'not_attempted'
-        # Use the most recent completed attempt for each exam
-        for session in completed_sessions:
-            exam_id = session.exam_id
-            if exam_id not in exam_status:  # Only keep the most recent completed attempt (first occurrence due to ordering)
-                if session.score >= session.exam.passing_score:
-                    exam_status[exam_id] = 'passed'
-                else:
-                    exam_status[exam_id] = 'failed'
-    
-    # Add status to each exam (defaults to 'not_attempted' if not found)
-    for exam in exams:
-        exam.completion_status = exam_status.get(exam.id, 'not_attempted')
+        # Get all categories that have exams with this exam_name
+        if exam_name == 'Other':
+            # For "Other", filter categories that have exams with NULL or empty exam_name
+            categories_data = Category.objects.filter(
+                Q(exams__exam_name__isnull=True) | Q(exams__exam_name=''),
+                exams__is_active=True
+            ).annotate(
+                exam_count=Count('exams', filter=Q(exams__is_active=True) & (Q(exams__exam_name__isnull=True) | Q(exams__exam_name='')) & Q(exams__questions__is_active=True), distinct=True)
+            ).filter(exam_count__gt=0).distinct().order_by('name')
+        else:
+            categories_data = Category.objects.filter(
+                exams__exam_name=exam_name,
+                exams__is_active=True
+            ).annotate(
+                exam_count=Count('exams', filter=Q(exams__is_active=True) & Q(exams__exam_name=exam_name) & Q(exams__questions__is_active=True), distinct=True)
+            ).filter(exam_count__gt=0).distinct().order_by('name')
+        
+        categories_list = [{'id': cat.id, 'name': cat.name, 'description': cat.description, 'exam_count': cat.exam_count} for cat in categories_data]
+        
+        # If category is also selected, fetch exams for that exam_name and category
+        if category_id:
+            selected_category = get_object_or_404(Category, id=category_id)
+            
+            # Handle "Other" case (NULL or empty exam_name)
+            if exam_name == 'Other':
+                exam_filter = Q(category_id=category_id, exam_name__isnull=True) | Q(category_id=category_id, exam_name='')
+            else:
+                exam_filter = Q(category_id=category_id, exam_name=exam_name)
+            
+            exams = Exam.objects.filter(
+                exam_filter,
+                is_active=True
+            ).annotate(
+                question_count=Count('questions', filter=Q(questions__is_active=True))
+            ).filter(question_count__gt=0).prefetch_related('topics').order_by('name')
+            
+            if search_query:
+                exams = exams.filter(
+                    Q(name__icontains=search_query) | 
+                    Q(description__icontains=search_query)
+                )
+            
+            # Get user's completion status for each exam
+            exam_status = {}
+            if request.user.is_authenticated:
+                # Get all completed sessions for the exams, ordered by most recent first
+                completed_sessions = QuizSession.objects.filter(
+                    user=request.user,
+                    is_completed=True,
+                    exam__in=exams
+                ).select_related('exam').order_by('-completed_at')
+                
+                # Create a dict mapping exam_id to status: 'passed', 'failed', or 'not_attempted'
+                # Use the most recent completed attempt for each exam
+                for session in completed_sessions:
+                    exam_id = session.exam_id
+                    if exam_id not in exam_status:  # Only keep the most recent completed attempt (first occurrence due to ordering)
+                        if session.score >= session.exam.passing_score:
+                            exam_status[exam_id] = 'passed'
+                        else:
+                            exam_status[exam_id] = 'failed'
+            
+            # Add status to each exam (defaults to 'not_attempted' if not found)
+            for exam in exams:
+                exam.completion_status = exam_status.get(exam.id, 'not_attempted')
+            
+            # Group exams by exam_name (should be just one group)
+            for exam in exams:
+                exam_name_val = exam.exam_name or 'Other'
+                if exam_name_val not in exams_by_exam_name:
+                    exams_by_exam_name[exam_name_val] = []
+                exams_by_exam_name[exam_name_val].append(exam)
     
     return render(request, 'quiz/exam_list.html', {
-        'exams': exams,
-        'categories': categories,
-        'selected_category': int(category_id) if category_id else None,
+        'exams_by_exam_name': exams_by_exam_name,
+        'exam_names_list': exam_names_list,
+        'categories_list': categories_list,
+        'selected_category': selected_category,
+        'selected_exam_name': selected_exam_name,
         'search_query': search_query,
     })
 
 
 @login_required
+@login_required
 def quiz_start(request, exam_id):
-    """Start a new quiz session or resume incomplete one"""
+    """Start a new quiz session or resume incomplete one - Login required"""
     exam = get_object_or_404(Exam, id=exam_id, is_active=True)
     
     # Check if there are questions
@@ -235,17 +305,8 @@ def quiz_question(request, session_id, question_num):
         messages.info(request, 'This quiz has already been completed.')
         return redirect('quiz_result', session_id=quiz_session.id)
     
-    # Get all questions for this exam - use consistent ordering based on session start time
-    # This ensures the same order throughout the quiz session
-    import hashlib
-    questions_queryset = quiz_session.exam.questions.filter(is_active=True).order_by('id')
-    # Create a deterministic shuffle based on session ID to keep order consistent
-    questions_list = list(questions_queryset)
-    session_hash = int(hashlib.md5(f"{quiz_session.id}{quiz_session.started_at}".encode()).hexdigest()[:8], 16)
-    import random
-    random.seed(session_hash)
-    random.shuffle(questions_list)
-    questions = questions_list
+    # Get all questions for this exam in database order (order field, then id)
+    questions = list(quiz_session.exam.questions.filter(is_active=True).order_by('order', 'id'))
     
     if not questions:
         messages.error(request, 'No questions available for this exam.')
@@ -609,14 +670,8 @@ def incomplete_quizzes(request):
         
         # Find the first unanswered question or start from question 1
         answered_question_ids = set(session.user_answers.values_list('question_id', flat=True))
-        # Get question order based on session (same deterministic shuffle)
-        import hashlib
-        import random
-        questions_queryset = list(session.exam.questions.filter(is_active=True).order_by('id'))
-        session_hash = int(hashlib.md5(f"{session.id}{session.started_at}".encode()).hexdigest()[:8], 16)
-        random.seed(session_hash)
-        questions_list = questions_queryset.copy()
-        random.shuffle(questions_list)
+        # Get questions in database order (order field, then id)
+        questions_list = list(session.exam.questions.filter(is_active=True).order_by('order', 'id'))
         
         # Find first unanswered question
         next_question_num = 1
@@ -672,6 +727,47 @@ def profile(request):
         'accuracy': round(accuracy, 1),
         'quiz_history': quiz_history,
         'recent_sessions': recent_sessions,
+    })
+
+
+@login_required
+def edit_profile(request):
+    """Edit user profile including photo upload"""
+    from .models import UserProfile
+    from django.contrib.auth.forms import UserChangeForm
+    
+    user = request.user
+    profile, created = UserProfile.objects.get_or_create(user=user)
+    
+    if request.method == 'POST':
+        # Handle profile photo upload
+        if 'profile_photo' in request.FILES:
+            # Delete old photo if exists
+            if profile.profile_photo:
+                profile.profile_photo.delete()
+            profile.profile_photo = request.FILES['profile_photo']
+            profile.save()
+            messages.success(request, 'Profile photo updated successfully!')
+        
+        # Handle user info update
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        
+        if first_name:
+            user.first_name = first_name
+        if last_name:
+            user.last_name = last_name
+        if email:
+            user.email = email
+        
+        user.save()
+        messages.success(request, 'Profile updated successfully!')
+        return redirect('profile')
+    
+    return render(request, 'quiz/edit_profile.html', {
+        'user': user,
+        'user_profile': profile,
     })
 
 

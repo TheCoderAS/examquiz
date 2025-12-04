@@ -25,25 +25,59 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'home' %}">Home</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'exam_list' %}">Exams</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="syllabusDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Syllabus
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="syllabusDropdown">
+                            <li><a class="dropdown-item" href="https://abhishekkumar1437.github.io/AKU-website/" target="_blank"><i class="bi bi-book"></i> B.Tech</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-book"></i> CTET</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-book"></i> UPSC</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-book"></i> ASI Bihar</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-book"></i> STET</a></li>
+                           
+                        </ul>
+                    </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'exam_list' %}">Exams</a>
                     </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ user.username }}
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" style="gap: 8px;">
+                            {% if user_profile and user_profile.profile_photo %}
+                                <img src="{{ user_profile.profile_photo.url }}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover; border: 2px solid rgba(255,255,255,0.3);">
+                            {% else %}
+                                <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
+                            {% endif %}
+                            <span class="d-none d-sm-inline">{{ user.first_name|default:user.username }}</span>
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <div class="dropdown-item-text">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        {% if user_profile and user_profile.profile_photo %}
+                                            <img src="{{ user_profile.profile_photo.url }}" alt="Profile" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% else %}
+                                            <i class="bi bi-person-circle" style="font-size: 2rem;"></i>
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ user.get_full_name|default:user.username }}</strong><br>
+                                            <small class="text-muted">{{ user.email|default:"No email" }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                            <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>
                     </li>
                     {% else %}

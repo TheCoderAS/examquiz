@@ -112,8 +112,10 @@ class Command(BaseCommand):
         
         # Direct mapping with variations
         column_mappings = {
+            'exam_category': ['exam_category', 'examcategory', 'exam_cat'],
             'category': ['category', 'cat'],
-            'exam': ['exam', 'exam_name'],
+            'exam_name': ['exam_name', 'examname'],
+            'exam': ['exam', 'exam_set'],
             'question_text': ['question_text', 'question', 'questiontext', 'q'],
             'topic': ['topic'],
             'difficulty': ['difficulty', 'diff'],
@@ -256,7 +258,7 @@ class Command(BaseCommand):
                             mapped_row[standard_name] = value
                         
                         # Remove brackets from text fields (if any)
-                        text_fields = ['question_text', 'explanation', 'category', 'exam', 'topic']
+                        text_fields = ['question_text', 'explanation', 'category', 'exam_category', 'exam_name', 'exam', 'topic']
                         for field in text_fields:
                             if field in mapped_row and isinstance(mapped_row[field], str):
                                 mapped_row[field] = mapped_row[field].replace('[', '').replace(']', '')
@@ -464,31 +466,45 @@ class Command(BaseCommand):
     def process_row(self, row, row_num, has_choice_columns=False):
         """Process a single row and create/update question - same logic as CSV import"""
         # Get or create category
+        exam_category = self.remove_all_brackets(row.get('exam_category', 'AAAA').strip() or 'AAAA')
         category_name = row.get('category', 'General').strip()
         if not category_name:
             category_name = 'General'
         category_name = self.remove_all_brackets(category_name)
         category, _ = Category.objects.get_or_create(
             name=category_name,
-            defaults={'description': f'Category for {category_name} exams'}
+            defaults={
+                'exam_category': exam_category,
+                'description': f'Category for {category_name} exams'
+            }
         )
+        # Update exam_category if it was provided and different
+        if exam_category != 'AAAA' and category.exam_category == 'AAAA':
+            category.exam_category = exam_category
+            category.save()
         
         # Get or create exam
-        exam_name = row.get('exam', '').strip()
-        if not exam_name:
-            raise ValueError('exam name cannot be empty')
-        exam_name = self.remove_all_brackets(exam_name)
+        exam_name_field = self.remove_all_brackets(row.get('exam_name', 'UPSC').strip() or 'UPSC')
+        exam_set_name = row.get('exam', '').strip()
+        if not exam_set_name:
+            raise ValueError('exam name (set name) cannot be empty')
+        exam_set_name = self.remove_all_brackets(exam_set_name)
         
         exam, _ = Exam.objects.get_or_create(
             category=category,
-            name=exam_name,
+            name=exam_set_name,
             defaults={
+                'exam_name': exam_name_field,
                 'description': self.remove_all_brackets(row.get('exam_description', '')),
                 'duration_minutes': int(row.get('duration_minutes', 60)) if row.get('duration_minutes', '').strip() else 60,
                 'total_questions': int(row.get('total_questions', 10)) if row.get('total_questions', '').strip() else 10,
                 'passing_score': int(row.get('passing_score', 60)) if row.get('passing_score', '').strip() else 60,
             }
         )
+        # Update exam_name if it was provided and different
+        if exam_name_field != 'UPSC' and exam.exam_name == 'UPSC':
+            exam.exam_name = exam_name_field
+            exam.save()
         
         # Get or create topic (optional)
         topic = None
